@@ -1,0 +1,9 @@
+.venv/
+wheels/
+__pycache__/
+*.pyc
+.autoinstall-skip
+# build artifacts (sdist/wheel) — produced by `python -m build` / CI, never committed
+build/
+dist/
+*.egg-info/

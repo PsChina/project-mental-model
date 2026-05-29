@@ -1,0 +1,50 @@
+# codegraph is usable two ways:
+#   1. copy-and-go  — just run `python cli.py ...` (T0 zero-dep; T2 auto-builds .venv)
+#   2. installed    — `pipx install codegraph-pmm` (PyPI) or `pip install .[t2]` (source) -> `codegraph` on PATH
+# This file makes (2) work so codegraph is a real, independently-versionable package,
+# not loose files in a skill. Recommended distribution is still copy-and-go.
+# NOTE: the PyPI *distribution* name is `codegraph-pmm` (plain `codegraph` was taken on
+# PyPI); the command and the import modules stay `codegraph` — unaffected by the rename.
+[build-system]
+requires = ["setuptools>=77"]          # >=77 for PEP 639 SPDX `license` / `license-files`
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codegraph-pmm"
+version = "0.1.0"
+description = "Fresh-from-source code structure engine: ranked repo map + symbol nav (where/callers/deps) for project mental models"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "PsChina"}]
+keywords = ["code-graph", "repo-map", "tree-sitter", "pagerank", "llm-context"]
+dependencies = []  # T0 (regex tier) is pure standard library
+
+# T2 (tree-sitter AST tier). Install with: pip install "codegraph-pmm[t2]"
+# Grammars are bundled per-wheel (offline at runtime); we deliberately avoid
+# tree-sitter-language-pack, whose v1.x downloads grammars on first use (breaks offline).
+[project.optional-dependencies]
+t2 = [
+  "tree-sitter>=0.23",
+  "tree-sitter-python",
+  "tree-sitter-javascript",
+  "tree-sitter-typescript",
+  "tree-sitter-c",
+  "tree-sitter-cpp",
+  "tree-sitter-java",
+  "tree-sitter-go",
+  "tree-sitter-rust",
+  "tree-sitter-swift",
+  "tree-sitter-objc",
+]
+
+[project.urls]
+Homepage = "https://github.com/PsChina/project-mental-model"
+Repository = "https://github.com/PsChina/project-mental-model"
+
+[project.scripts]
+codegraph = "cli:main"
+
+[tool.setuptools]
+py-modules = ["cli", "extract", "graph", "render", "cache", "langs", "install"]

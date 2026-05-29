@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+# codegraph launcher (macOS / Linux / git-bash). Resolves cli.py next to this dir
+# and runs it; cli.py self-bootstraps into .venv (T2) if present, else T0.
+DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+PY="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+[ -n "$PY" ] || { echo "codegraph: python3 not found on PATH" >&2; exit 127; }
+exec "$PY" "$DIR/cli.py" "$@"

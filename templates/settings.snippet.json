@@ -1,0 +1,23 @@
+{
+  "_comment": "PMM 环境自举模板。按目标分两块 merge 进对应 settings.json,不要整体覆盖目标文件。",
+
+  "_global ~/.claude/settings.json (链②通用层 + 链③auto-memory)": {
+    "autoMemoryEnabled": true,
+    "hooks": {
+      "SessionStart": [
+        { "hooks": [ { "type": "command", "command": "node $HOME/.claude/hooks/session-start.js" } ] }
+      ]
+    }
+  },
+
+  "_workspace <repo|workspace>/.claude/settings.json (链②dev-cases 注入)": {
+    "hooks": {
+      "SessionStart": [
+        { "matcher": "*", "hooks": [ { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/dev-cases/.hooks/inject.js\"", "timeout": 10 } ] }
+      ],
+      "UserPromptSubmit": [
+        { "matcher": "*", "hooks": [ { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/dev-cases/.hooks/inject.js\"", "timeout": 10 } ] }
+      ]
+    }
+  }
+}

@@ -1,0 +1,4 @@
+.DS_Store
+__pycache__/
+*.pyc
+# the codegraph T2 venv + build artifacts are ignored by tools/codegraph/.gitignore
