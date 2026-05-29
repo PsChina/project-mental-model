@@ -1,0 +1,53 @@
+# Publish the bundled codegraph tool to PyPI as `codegraph-pmm`, via PyPI
+# Trusted Publishing (OIDC) — no API token anywhere. The package lives in the
+# tools/codegraph/ subdirectory of this skill repo.
+#
+# Trigger: push a tag like `codegraph-v0.1.0` (scoped so it doesn't fire on
+# unrelated skill changes). Bump `version` in tools/codegraph/pyproject.toml first.
+#
+# One-time setup before the first run: see PUBLISHING.md (register a PyPI account,
+# add a "pending" Trusted Publisher mapping this repo + this workflow + the `pypi`
+# environment, optionally create the GitHub `pypi` environment).
+name: Publish codegraph-pmm to PyPI
+
+on:
+  push:
+    tags:
+      - "codegraph-v*"
+  workflow_dispatch: {}   # allow manual runs from the Actions tab
+
+jobs:
+  build:
+    name: Build sdist + wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Build from tools/codegraph
+        run: |
+          python -m pip install --upgrade build
+          python -m build tools/codegraph --outdir dist
+      - name: Check metadata
+        run: |
+          python -m pip install --upgrade twine
+          python -m twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI (Trusted Publishing)
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi          # must match the environment in the PyPI publisher config
+    permissions:
+      id-token: write          # OIDC token for Trusted Publishing — the whole point
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
