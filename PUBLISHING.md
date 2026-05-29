@@ -9,6 +9,15 @@ Publishing uses **PyPI Trusted Publishing (OIDC)** from GitHub Actions — there
 **no API token** anywhere (nothing to leak or rotate). The
 [`.github/workflows/publish.yml`](.github/workflows/publish.yml) workflow does it.
 
+> **PyPI is optional, not a blocker.** Because this repo is public, codegraph is
+> already installable today with no PyPI account:
+> ```sh
+> pipx install "git+https://github.com/PsChina/project-mental-model.git#subdirectory=tools/codegraph"
+> ```
+> PyPI just buys the shorter `pipx install codegraph-pmm` alias. So everything
+> below (account, Trusted Publisher, tagging) is "nice to have" — do it when
+> convenient; users are never stuck waiting on it.
+
 ## One-time setup (do this before the first release)
 
 1. **Create the GitHub repo** under the `PsChina` account, e.g.

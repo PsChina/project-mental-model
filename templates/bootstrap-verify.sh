@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
 # PMM 环境自举 verify —— 检四条「生效链」的 on-disk 事实,报 PASS/WARN/FAIL。
 # 把「模型肉眼判生效」降级为「脚本判事实 + 模型只补缺」。评审一致点名:不跑它,生效是薛定谔状态。
-# 用法:bash bootstrap-verify.sh [workspace_dir] [--fix]
-#   workspace 默认 = 当前目录;--fix = 把「孤儿 memory」从只报告升级为自动补 MEMORY.md 索引行
-#   (默认只读体检不写文件;仅 --fix 时才写,且只对有 description frontmatter 的孤儿安全补)。
+# 用法:bash bootstrap-verify.sh [workspace_dir] [--fix] [--install]
+#   workspace 默认 = 当前目录(默认只读体检,不写文件)
+#   --fix     = 把「孤儿 memory」从只报告升级为自动补 MEMORY.md 索引行(只补有 description 的)
+#   --install = 一键幂等装核心链(只补缺、不覆盖):/pmm 别名 + 本项目 MEMORY 骨架 +
+#               autoMemoryEnabled + 保鲜 post-commit + CLAUDE.md 入口指针,装完自动复核。
+#               ★ 首次搭建只跑这一条,替代过去手动逐链修(复制模板/symlink/merge settings)。
 # 退出码:FAIL(❌,核心链未就位)→ 非 0;WARN(⚠️,可选/建议项)不影响退出码;全 PASS → 0。
 set -uo pipefail
 
-ws=""; fix=0
+ws=""; fix=0; install=0
 for a in "$@"; do
-  case "$a" in --fix) fix=1 ;; *) ws="$a" ;; esac
+  case "$a" in --fix) fix=1 ;; --install) install=1 ;; *) ws="$a" ;; esac
 done
 ws="${ws:-$PWD}"
 hc="$HOME/.claude"
@@ -33,6 +36,49 @@ fm_val() { awk -v k="$2" 'NR==1&&$0=="---"{f=1;next} f&&$0=="---"{exit} f&&$0~"^
 
 echo "PMM bootstrap-verify @ $ws"
 echo
+
+# ---- --install:幂等装核心链(只补缺,不覆盖);装完落到下方 verify 复核 ----
+tpl="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # = templates/(本脚本所在目录,模板源)
+if [ "$install" -eq 1 ]; then
+  echo "INSTALL —— 幂等装核心链(只补缺):"
+  # ④ /pmm 命令别名
+  if [ ! -f "$hc/commands/pmm.md" ] && [ -f "$tpl/pmm.md" ]; then
+    mkdir -p "$hc/commands" && cp "$tpl/pmm.md" "$hc/commands/pmm.md" && echo "  ✚ 装 /pmm 别名(重开会话生效)"
+  fi
+  # ③ 本项目 MEMORY.md 骨架
+  if [ ! -f "$proj_mem" ] && [ -f "$tpl/MEMORY.md" ]; then
+    mkdir -p "$(dirname "$proj_mem")" && cp "$tpl/MEMORY.md" "$proj_mem" && echo "  ✚ 建本项目 MEMORY.md 骨架"
+  fi
+  # ③ autoMemoryEnabled(python3 幂等 merge:已为 true 则不动,缺 python3 则跳过)
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$settings" <<'PY' && echo "  ✚ 固化 autoMemoryEnabled:true 到活 settings.json"
+import json,sys,os
+p=sys.argv[1]
+try: d=json.load(open(p)) if os.path.exists(p) else {}
+except Exception: d={}
+if d.get("autoMemoryEnabled") is True: sys.exit(1)
+d["autoMemoryEnabled"]=True
+os.makedirs(os.path.dirname(p) or ".",exist_ok=True)
+json.dump(d,open(p,"w"),indent=2,ensure_ascii=False)
+PY
+  fi
+  # ②b 保鲜 post-commit(自包含、低成本;可选)
+  if [ -f "$tpl/pmm-staleness-detect.sh" ]; then
+    mkdir -p "$hc/hooks"; [ -f "$hc/hooks/pmm-staleness-detect.sh" ] || cp "$tpl/pmm-staleness-detect.sh" "$hc/hooks/"
+    if [ -d "$ws/.git" ] && [ ! -e "$ws/.git/hooks/post-commit" ]; then
+      ln -s "$hc/hooks/pmm-staleness-detect.sh" "$ws/.git/hooks/post-commit" 2>/dev/null && echo "  ✚ 本项目 post-commit 保鲜检测就位"
+    fi
+  fi
+  # ① CLAUDE.md 入口指针(改项目文件、不 commit;仅在完全无指针时补最小入口)
+  if [ -f "$ws/CLAUDE.md" ]; then
+    grep -qE '项目心智模型在|dev-cases|mental-model|current-state' "$ws/CLAUDE.md" 2>/dev/null || \
+      { printf '\n> 📍 项目心智模型在 <落点>/<project>/ —— 新会话先读 CLAUDE.md(宪法)+ current-state.md。\n' >> "$ws/CLAUDE.md"; echo "  ✚ 在 $ws/CLAUDE.md 追加入口指针(把 <落点> 改成真实路径)"; }
+  else
+    printf '> 📍 项目心智模型在 <落点>/<project>/ —— 新会话先读 CLAUDE.md(宪法)+ current-state.md。\n' > "$ws/CLAUDE.md"; echo "  ✚ 建最小 $ws/CLAUDE.md 入口(把 <落点> 改成真实路径)"
+  fi
+  echo "  —— 核心链已就位;下面 verify 复核(命令别名需重开会话):"
+  echo
+fi
 
 echo "链① 原生 CLAUDE.md 入口(唯一跨机器):"
 if [ -f "$ws/CLAUDE.md" ]; then

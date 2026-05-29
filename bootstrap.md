@@ -1,18 +1,21 @@
 # 环境自举(install / 自完善)— project-mental-model
 
 > 首次建模、或在**新机器 / 新 workspace**、或**别人把整个 `project-mental-model/` 目录复制过来**时执行。目的:让 skill 产物**真能被新会话加载、命令唤得起、跨机器可复现**。四条链缺一,产物即孤儿、跨机器不可见、或命令无反应。
-> 通则:**先跑 `bash templates/bootstrap-verify.sh` 一键检四链 on-disk 事实(PASS/WARN/FAIL),按 ❌ 补,WARN 看是否可选**(依赖 bash;纯 Windows 无 git-bash 时跳过脚本,改按下方"接收方启动指南"逐链手动核) · **幂等只补缺**(已存在不覆盖)· **生成 = 优先复制 `templates/` 下成熟模板(忠实可复现),不凭契约现写** · **均不自动 commit** · 改完一句话告知用户 · settings.json 改动可走 `update-config`。
+> 通则:**首次搭建只跑一条 `bash templates/bootstrap-verify.sh --install`** —— 幂等装齐核心链(只补缺、不覆盖),装完自动复核 PASS/WARN/FAIL,替代过去手动逐链修。日常体检跑无参版(只读);`--fix` 补孤儿索引。(依赖 bash;纯 Windows 无 git-bash 时跳过脚本,改按下方"接收方启动指南"逐链手动核)· **生成 = 优先复制 `templates/` 下成熟模板(忠实可复现),不凭契约现写** · **均不自动 commit** · 改完一句话告知用户 · settings.json 改动可走 `update-config`。
 
 ## 接收方启动指南(别人复制整个 `project-mental-model/` 目录后)
 
-复制单位 = 整个 `~/.claude/skills/project-mental-model/` 目录(自包含,包内零硬编码本机路径,可跨机器)。接收方让它生效只需:
+复制单位 = 整个 `~/.claude/skills/project-mental-model/` 目录(自包含,包内零硬编码本机路径,可跨机器)。让它在新机 / 新项目生效 = **两步**:
 
-0. **放对位置**:把目录放进接收方的 `~/.claude/skills/project-mental-model/`(skill 靠此被原生加载)。
-1. **触发一次自举**:敲 `/project-mental-model`(用**全名**——此时 `/pmm` 别名还没装)或自然语言"建项目心智模型"。它会跑 `bootstrap-verify.sh` 看四链,按缺补全(含把 `/pmm` 别名、staleness 脚本从 `templates/` 复制就位)。
-2. **重开会话**:命令别名在会话启动时加载,补完 `commands/pmm.md` 后需重开一次会话,`/pmm` 才生效。
-3. **验证**:再跑一次 `bootstrap-verify.sh`,核心链全 ✅ 即就位。
+0. **放对位置**:目录放进 `~/.claude/skills/project-mental-model/`(skill 靠此被原生加载)。
+1. **一条命令装齐**:
+   ```sh
+   bash ~/.claude/skills/project-mental-model/templates/bootstrap-verify.sh --install
+   ```
+   幂等装核心链(`/pmm` 别名 + 本项目 MEMORY 骨架 + `autoMemoryEnabled` + 保鲜 post-commit + CLAUDE.md 入口指针),只补缺、不覆盖,装完自动复核报 PASS/WARN/FAIL。然后**重开一次会话**(命令别名在会话启动时加载,`/pmm` 才生效)。
 
-> 解开"要 `/pmm` 才能建 `/pmm`"的死循环:`/pmm` 不存在时用 `/project-mental-model` 全名触发,首次自举就把 `/pmm` 补上(链④)。
+> 没有 bash(纯 Windows 无 git-bash)→ 按下方各链手动核;有 bash 一律用 `--install`。
+> `--install` 已解开"要 `/pmm` 才能建 `/pmm`"的死循环——它直接把别名装上,不靠敲 `/pmm`。
 
 ## 三层产物(决定"复制即生效"的边界)
 

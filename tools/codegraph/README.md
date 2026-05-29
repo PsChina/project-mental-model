@@ -33,17 +33,32 @@ python3 install.py            # macOS / Linux
 py     install.py             # Windows (or python install.py)
 ```
 
-Or install it as a real, isolated package (it ships a `pyproject.toml`, so it is a
-standalone pip-installable tool, not just loose files). The PyPI **distribution**
-name is `codegraph-pmm` (plain `codegraph` was taken); the **command** stays
-`codegraph`:
+Or install it as a real, isolated command on `PATH` (it ships a `pyproject.toml`,
+so it is a standalone pip-installable tool, not just loose files). The **command**
+is always `codegraph`; the PyPI **distribution** name is `codegraph-pmm` (plain
+`codegraph` was taken).
+
+**From GitHub — works today, no account needed** (the repo is public; pip builds the
+`tools/codegraph` subdirectory directly):
 
 ```sh
-pipx install codegraph-pmm        # from PyPI (recommended: isolated, no collision)
-pipx install "codegraph-pmm[t2]"  # + tree-sitter grammars (T2)
+pipx install "git+https://github.com/PsChina/project-mental-model.git#subdirectory=tools/codegraph"
+pipx install "codegraph-pmm[t2] @ git+https://github.com/PsChina/project-mental-model.git#subdirectory=tools/codegraph"   # + T2 grammars
+```
 
-pipx install .                    # from a source checkout (T0)
-pipx install ".[t2]"              # from source + grammars (T2)
+**From PyPI** — once published, a shorter alias for the exact same package (PyPI is
+optional, not required: the GitHub line above never depends on it):
+
+```sh
+pipx install codegraph-pmm        # PyPI (isolated, no collision)
+pipx install "codegraph-pmm[t2]"  # + tree-sitter grammars (T2)
+```
+
+**From a source checkout** (you already have the skill / repo):
+
+```sh
+pipx install .                    # T0
+pipx install ".[t2]"              # + grammars (T2)
 pip  install ".[t2]"              # into the current environment
 ```
 
