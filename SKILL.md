@@ -73,8 +73,8 @@ description: 为任意项目维护"开局即接续"的心智 —— 两层:① C
 ## 命令
 `/pmm` 建/刷新 · `/pmm log` 沉淀 · `--rebuild` 重做(列覆盖待确认) · `check` 只体检 · `--project`/`--where` 覆盖。
 
-## check 模式(体检,不写文件)
-1. 跑 `bootstrap-verify.sh` 报四链 PASS/WARN/FAIL(含孤儿 memory 对账、triggers 机检、入口指针机检)。
+## check 模式(默认只读体检;仅 `--fix` 写)
+1. 跑 `bootstrap-verify.sh` 报四链 PASS/WARN/FAIL(含孤儿 memory 对账、triggers 机检、入口指针机检)。孤儿(topic 文件在、MEMORY.md 无索引行)默认**只报告**;`/pmm check --fix` 对**有 `description` frontmatter** 的孤儿**自动补索引行**(取不到 description 的仍只报、不乱写),消除"写了 memory 忘加索引→静默不注入"的高频失败。
 2. **覆盖自检(只召回"已知却漏存的",非完整性保证)**:对照 memory-bar 五类目(坑/业务/商业约束/优势/高沟通成本)逐类问"本项目这一类有无已知却未沉淀的"——给"全"侧一个粗粒度信号(否则只有"省"侧的 ≤150 行/~40 条硬上限,**过省不可观测**)。**边界**:它只能捞回已暴露但漏存的,发现不了 AI 自己都不知道的坑(unknown unknowns);别把它当完整覆盖。
 3. **pending 报告**:读 `~/.claude/.pmm-pending/<repo>.flag`,有则报"结构性改动未沉淀,建议 /pmm log"(自包含,接收方无 Tier3 开局注入也能查)。
 

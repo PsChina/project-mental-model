@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 # PMM 环境自举 verify —— 检四条「生效链」的 on-disk 事实,报 PASS/WARN/FAIL。
 # 把「模型肉眼判生效」降级为「脚本判事实 + 模型只补缺」。评审一致点名:不跑它,生效是薛定谔状态。
-# 用法:bash bootstrap-verify.sh [workspace_dir]   (workspace 默认 = 当前目录)
+# 用法:bash bootstrap-verify.sh [workspace_dir] [--fix]
+#   workspace 默认 = 当前目录;--fix = 把「孤儿 memory」从只报告升级为自动补 MEMORY.md 索引行
+#   (默认只读体检不写文件;仅 --fix 时才写,且只对有 description frontmatter 的孤儿安全补)。
 # 退出码:FAIL(❌,核心链未就位)→ 非 0;WARN(⚠️,可选/建议项)不影响退出码;全 PASS → 0。
 set -uo pipefail
 
-ws="${1:-$PWD}"
+ws=""; fix=0
+for a in "$@"; do
+  case "$a" in --fix) fix=1 ;; *) ws="$a" ;; esac
+done
+ws="${ws:-$PWD}"
 hc="$HOME/.claude"
 settings="$hc/settings.json"
 # 本项目 auto-memory 目录:cwd 路径把 / 换成 -(harness 约定)
@@ -22,6 +28,8 @@ fail=0
 ok()   { printf '  ✅ %s\n' "$1"; }
 warn() { printf '  ⚠️  %s\n' "$1"; }            # 可选/建议项,不置 fail
 bad()  { printf '  ❌ %s\n' "$1"; fail=1; }
+# --fix 用:从 topic 文件 frontmatter 取某 key 值(name/title/description),生成 MEMORY.md 索引行
+fm_val() { awk -v k="$2" 'NR==1&&$0=="---"{f=1;next} f&&$0=="---"{exit} f&&$0~"^"k":"{sub("^"k":[[:space:]]*","");print;exit}' "$1"; }
 
 echo "PMM bootstrap-verify @ $ws"
 echo
@@ -65,13 +73,26 @@ if [ -f "$proj_mem" ]; then
   ok "本项目 MEMORY.md 索引存在:$proj_mem"
   # 孤儿对账:topic 文件写了却没加索引行 → 永不被注入(最高频静默失败)
   mem_dir=$(dirname "$proj_mem")
-  orphans=0
+  orphans=0; repaired=0
   for f in "$mem_dir"/*.md; do
     [ -e "$f" ] || continue
     bn=$(basename "$f")
     [ "$bn" = "MEMORY.md" ] && continue
-    grep -q "$bn" "$proj_mem" 2>/dev/null || { warn "孤儿 memory(文件在但 MEMORY.md 无索引行,不会被注入):$bn"; orphans=$((orphans+1)); }
+    grep -q "$bn" "$proj_mem" 2>/dev/null && continue          # 已索引,跳过
+    if [ "$fix" -eq 1 ]; then
+      desc=$(fm_val "$f" description)
+      ttl=$(fm_val "$f" name); [ -z "$ttl" ] && ttl=$(fm_val "$f" title); [ -z "$ttl" ] && ttl="${bn%.md}"
+      if [ -n "$desc" ]; then
+        printf -- '- [%s](%s) — %s\n' "$ttl" "$bn" "$desc" >> "$proj_mem"
+        printf '  🔧 已补索引行:%s\n' "$bn"; repaired=$((repaired+1))
+      else
+        warn "孤儿 $bn 无 description frontmatter → 不安全自动补,需手动加索引行"; orphans=$((orphans+1))
+      fi
+    else
+      warn "孤儿 memory(文件在但 MEMORY.md 无索引行,不会被注入):$bn —— 跑 /pmm check --fix 自动补"; orphans=$((orphans+1))
+    fi
   done
+  [ "$repaired" -gt 0 ] && ok "已自动补 $repaired 条孤儿索引行到 MEMORY.md(--fix)"
   [ "$orphans" -eq 0 ] && ok "MEMORY.md 索引与 topic 文件一致(无孤儿)"
 else bad "本项目 MEMORY.md 不存在:$proj_mem(链③:复制 templates/MEMORY.md 骨架)"; fi
 
