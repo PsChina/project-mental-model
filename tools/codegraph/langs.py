@@ -58,8 +58,14 @@ def _defs(*pairs: tuple[str, str]) -> list[tuple[re.Pattern, str]]:
     return [(re.compile(p), k) for p, k in pairs]
 
 
-def _routes_spec(*triples) -> list:
-    return [(re.compile(p), m, g) for p, m, g in triples]
+def _routes_spec(*specs) -> list:
+    """Each spec = (regex, method: group-index|literal, path: group-index[, handler:
+    group-index]). A 4th element captures the handler from the call (route-table
+    style); omit it for decorator style, where the handler is the def below."""
+    out = []
+    for s in specs:
+        out.append((re.compile(s[0]), s[1], s[2], s[3] if len(s) > 3 else None))
+    return out
 
 
 # Express (method-call, path must start with "/") + NestJS (decorator) — shared by
@@ -88,6 +94,8 @@ LANGS: dict[str, Lang] = {
             (r"""^\s*@\s*[\w.]+\.(get|post|put|patch|delete|head|options|websocket)\s*\(\s*['"]([^'"]*)""", 1, 2),
             # Flask @app.route("/path"[, methods=...]) — verb unknown -> ANY
             (r"""^\s*@\s*[\w.]+\.route\s*\(\s*['"]([^'"]*)""", "ANY", 1),
+            # Django urlconf table: path("users/", views.user_list) — handler in arg
+            (r"""\b(?:re_)?path\s*\(\s*r?['"]([^'"]*)['"]\s*,\s*([\w.]+)""", "ANY", 1, 2),
         ),
     ),
     "swift": Lang(
@@ -188,6 +196,12 @@ LANGS: dict[str, Lang] = {
         ),
         imports=_c(r'^\s*(?:import\s+)?(?:[\w.]+\s+)?"([^"]+)"'),
         ts_module="tree_sitter_go",
+        routes=_routes_spec(
+            # Gin/Echo/chi verb methods: r.GET("/x", handler)
+            (r"""\b\w+\.(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s*\(\s*"(/[^"]*)"\s*,\s*([\w.]+)""", 1, 2, 3),
+            # net/http + mux: http.HandleFunc("/x", handler)
+            (r"""\b\w+\.HandleFunc\s*\(\s*"(/[^"]*)"\s*,\s*([\w.]+)""", "ANY", 1, 2),
+        ),
     ),
     "rust": Lang(
         "rust", (".rs",),
@@ -198,6 +212,12 @@ LANGS: dict[str, Lang] = {
         ),
         imports=_c(r"\buse\s+([\w:]+)"),
         ts_module="tree_sitter_rust",
+        routes=_routes_spec(
+            # Axum/Actix-scope router table: .route("/x", get(handler))
+            (r"""\.route\s*\(\s*"(/[^"]*)"\s*,\s*(get|post|put|patch|delete)\s*\(\s*([\w:]+)""", 2, 1, 3),
+            # Actix attribute macro: #[get("/x")] over a handler fn
+            (r"""^\s*#\[\s*(get|post|put|patch|delete)\s*\(\s*"([^"]*)""", 1, 2),
+        ),
     ),
 }
 

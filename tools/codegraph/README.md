@@ -147,11 +147,13 @@ tool hardcodes no project-specific names.
   full set if you want to filter differently.
 - T0 C/C++ misses functions whose `{` is on the next line (use T2 for C-heavy repos).
 - Kotlin / Objective-C use the regex tier (see Install).
-- `map` route detection covers **decorator / method-call** frameworks — FastAPI &
-  Flask (Python), Express & NestJS (JS/TS), Spring (Java/Kotlin). Route-table styles
-  (Django `urls.py`, Go/Rust routers) aren't detected yet; the handler name is a
-  heuristic (nearest def below the route), and method-call routes require a leading
-  `/` in the path to avoid matching calls like `map.get("key")`.
+- `map` route detection covers decorator, method-call, and route-table frameworks:
+  FastAPI / Flask / Django (Python), Express / NestJS (JS/TS), Spring (Java/Kotlin),
+  Gin / net-http (Go), Axum / Actix (Rust). The handler name is a heuristic (the
+  call's handler arg, or the nearest def below a decorator); method-call routes
+  require a leading `/` in the path to avoid matching calls like `map.get("key")`.
+  Mount-prefix composition (e.g. an Express `app.use("/api", router)`) is not
+  resolved — paths are reported as written at the route site.
 
 ## Files
 

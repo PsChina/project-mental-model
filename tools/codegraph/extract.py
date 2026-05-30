@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import fnmatch
 import os
+import re
 import subprocess
 from collections import defaultdict
 
@@ -197,7 +198,7 @@ def _routes(lang: str, lines: list[str], defs: list[list]) -> list[list]:
         s = line.lstrip()
         if any(s.startswith(c) for c in comment_marks):
             continue
-        for rx, mkey, pgrp in specs:
+        for rx, mkey, pgrp, hgrp in specs:
             m = rx.search(line)
             if not m:
                 continue
@@ -205,7 +206,13 @@ def _routes(lang: str, lines: list[str], defs: list[list]) -> list[list]:
             method = method.upper()
             if method == "REQUEST":          # @RequestMapping has no fixed verb
                 method = "ANY"
-            out.append([method, m.group(pgrp), i, _handler_below(def_lines, i)])
+            # handler: captured from the call (route-table style) or the def below
+            # (decorator style). Strip module/path qualifiers: views.x / mod::x -> x.
+            if hgrp is not None:
+                handler = re.split(r"[.:]", m.group(hgrp) or "")[-1]
+            else:
+                handler = _handler_below(def_lines, i)
+            out.append([method, m.group(pgrp), i, handler])
             break                            # one route per line
     return out
 
