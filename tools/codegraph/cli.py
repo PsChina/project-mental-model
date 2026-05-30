@@ -1,6 +1,6 @@
 """codegraph CLI — fresh, ranked, budgeted structural map of a codebase.
 
-  codegraph map [path]          ranked overview (stack, entry points, key defs)
+  codegraph map [path]          ranked overview (stack, entry points, HTTP routes, key defs)
   codegraph where <symbol>      definition site(s) + top callers
   codegraph callers <symbol>    all reference sites, ranked
   codegraph deps <file>         imports / internal definers / reverse deps

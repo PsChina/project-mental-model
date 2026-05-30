@@ -11,7 +11,8 @@ Output per file (cached by cache.TagCache):
     {"lang": str,
      "defs":  [[name, line, kind, sig], ...],
      "refs":  {name: [line, ...]},          # capped; filtered to defs at graph time
-     "imports": [module, ...]}
+     "imports": [module, ...],
+     "routes": [[method, path, line, handler], ...]}  # HTTP routes, if a web framework
 """
 from __future__ import annotations
 
@@ -173,6 +174,42 @@ def _tokenize_refs(lines: list[str], lang: str) -> dict[str, list[int]]:
     return dict(refs)
 
 
+def _handler_below(def_lines: list[tuple[int, str]], route_line: int, window: int = 6) -> str:
+    """Name of the definition at/just below a route decorator (handler underneath).
+    `def_lines` is sorted ascending. Best-effort: '' if none within `window`."""
+    for ln, name in def_lines:
+        if ln >= route_line:
+            return name if ln <= route_line + window else ""
+    return ""
+
+
+def _routes(lang: str, lines: list[str], defs: list[list]) -> list[list]:
+    """Detect HTTP route->handler bindings for decorator/method-call frameworks
+    (FastAPI/Flask, Express/NestJS, Spring). Tier-independent (text scan, like
+    imports). Handler is heuristic — the nearest def below the route line."""
+    specs = LANGS[lang].routes
+    if not specs:
+        return []
+    def_lines = sorted((ln, name) for name, ln, _k, _s in defs)
+    comment_marks = LANGS[lang].line_comment
+    out: list[list] = []
+    for i, line in enumerate(lines, 1):
+        s = line.lstrip()
+        if any(s.startswith(c) for c in comment_marks):
+            continue
+        for rx, mkey, pgrp in specs:
+            m = rx.search(line)
+            if not m:
+                continue
+            method = (m.group(mkey) if isinstance(mkey, int) else mkey) or "ANY"
+            method = method.upper()
+            if method == "REQUEST":          # @RequestMapping has no fixed verb
+                method = "ANY"
+            out.append([method, m.group(pgrp), i, _handler_below(def_lines, i)])
+            break                            # one route per line
+    return out
+
+
 # ---- T0: regex + tokenize --------------------------------------------------
 
 class RegexExtractor:
@@ -181,7 +218,7 @@ class RegexExtractor:
     def scan(self, ap: str, rel: str, lang: str) -> dict:
         rd = _read(ap)
         if rd is None:
-            return {"lang": lang, "defs": [], "refs": {}, "imports": []}
+            return {"lang": lang, "defs": [], "refs": {}, "imports": [], "routes": []}
         text, _ = rd
         lines = text.split("\n")
         cfg = LANGS[lang]
@@ -201,7 +238,7 @@ class RegexExtractor:
                         defs.append([name, i, kind, line.strip()[:160]])
 
         return {"lang": lang, "defs": defs, "refs": _tokenize_refs(lines, lang),
-                "imports": _imports(lang, lines)}
+                "imports": _imports(lang, lines), "routes": _routes(lang, lines, defs)}
 
 
 # ---- T2: tree-sitter tag queries -------------------------------------------
@@ -271,7 +308,7 @@ class TreeSitterExtractor:
             return self._fallback.scan(ap, rel, lang)  # hybrid: regex for this lang
         rd = _read(ap)
         if rd is None:
-            return {"lang": lang, "defs": [], "refs": {}, "imports": []}
+            return {"lang": lang, "defs": [], "refs": {}, "imports": [], "routes": []}
         text, raw = rd
         lines = text.split("\n")
         parser, query, _ = built
@@ -315,7 +352,7 @@ class TreeSitterExtractor:
             defs.append([name, row + 1, kind or "def", sig])
 
         return {"lang": lang, "defs": defs, "refs": _tokenize_refs(lines, lang),
-                "imports": _imports(lang, lines)}
+                "imports": _imports(lang, lines), "routes": _routes(lang, lines, defs)}
 
     @staticmethod
     def _matches(query, root):

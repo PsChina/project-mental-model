@@ -97,7 +97,7 @@ python3 <skill>/tools/codegraph/cli.py <command> [args] [flags]
 
 | Command | Output |
 |---|---|
-| `map [path]` | ranked overview: stack, entry points, dirs by symbol density, PageRank-ranked key definitions with file:line |
+| `map [path]` | ranked overview: stack, entry points, dirs by symbol density, HTTP routes (if a web framework), PageRank-ranked key definitions with file:line |
 | `where <symbol>` | definition site(s) `file:line [kind]` + signature + top reference sites |
 | `callers <symbol>` | every reference site of the symbol, ranked |
 | `deps <file>` | the file's imports / internal definer files it depends on / reverse deps |
@@ -147,6 +147,11 @@ tool hardcodes no project-specific names.
   full set if you want to filter differently.
 - T0 C/C++ misses functions whose `{` is on the next line (use T2 for C-heavy repos).
 - Kotlin / Objective-C use the regex tier (see Install).
+- `map` route detection covers **decorator / method-call** frameworks — FastAPI &
+  Flask (Python), Express & NestJS (JS/TS), Spring (Java/Kotlin). Route-table styles
+  (Django `urls.py`, Go/Rust routers) aren't detected yet; the handler name is a
+  heuristic (nearest def below the route), and method-call routes require a leading
+  `/` in the path to avoid matching calls like `map.get("key")`.
 
 ## Files
 

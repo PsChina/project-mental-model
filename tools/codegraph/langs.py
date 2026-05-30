@@ -45,6 +45,9 @@ class Lang:
     ts_tags_file: str | None = None
     # line-comment prefixes, to skip def matches inside comments.
     line_comment: tuple[str, ...] = ("//",)
+    # HTTP route patterns (decorator/method-call frameworks): each is
+    # (regex, method: group-index|literal, path: group-index). See extract._routes.
+    routes: list = field(default_factory=list)
 
 
 def _c(*patterns: str) -> list[re.Pattern]:
@@ -53,6 +56,19 @@ def _c(*patterns: str) -> list[re.Pattern]:
 
 def _defs(*pairs: tuple[str, str]) -> list[tuple[re.Pattern, str]]:
     return [(re.compile(p), k) for p, k in pairs]
+
+
+def _routes_spec(*triples) -> list:
+    return [(re.compile(p), m, g) for p, m, g in triples]
+
+
+# Express (method-call, path must start with "/") + NestJS (decorator) — shared by
+# both .js and .ts. The leading-"/" guard keeps `.get(`/`.post(` from matching
+# unrelated calls like `map.get("key")` / `cache.post`.
+_JS_ROUTES = (
+    (r"""^\s*@(Get|Post|Put|Patch|Delete|All)\s*\(\s*['"]?([^'")]*)""", 1, 2),
+    (r"""\b[\w$.]+\.(get|post|put|patch|delete|all)\s*\(\s*['"](/[^'"]*)""", 1, 2),
+)
 
 
 # ---- language table --------------------------------------------------------
@@ -67,6 +83,12 @@ LANGS: dict[str, Lang] = {
         imports=_c(r"^\s*(?:from\s+([.\w]+)\s+import|import\s+([.\w]+))"),
         ts_module="tree_sitter_python",
         line_comment=("#",),
+        routes=_routes_spec(
+            # FastAPI / APIRouter / Flask verb decorators: @app.get("/path")
+            (r"""^\s*@\s*[\w.]+\.(get|post|put|patch|delete|head|options|websocket)\s*\(\s*['"]([^'"]*)""", 1, 2),
+            # Flask @app.route("/path"[, methods=...]) — verb unknown -> ANY
+            (r"""^\s*@\s*[\w.]+\.route\s*\(\s*['"]([^'"]*)""", "ANY", 1),
+        ),
     ),
     "swift": Lang(
         "swift", (".swift",),
@@ -88,6 +110,9 @@ LANGS: dict[str, Lang] = {
         imports=_c(r"^\s*import\s+([\w.]+)"),
         ts_module="tree_sitter_kotlin",
         ts_tags_file="kotlin-tags.scm",
+        routes=_routes_spec(  # Spring MVC mapping annotations (Kotlin)
+            (r"""@(Get|Post|Put|Patch|Delete|Request)Mapping\s*\(\s*(?:value\s*=\s*)?['"]([^'"]+)""", 1, 2),
+        ),
     ),
     "java": Lang(
         "java", (".java",),
@@ -97,6 +122,9 @@ LANGS: dict[str, Lang] = {
         ),
         imports=_c(r"^\s*import\s+(?:static\s+)?([\w.]+)"),
         ts_module="tree_sitter_java",
+        routes=_routes_spec(  # Spring MVC mapping annotations
+            (r"""@(Get|Post|Put|Patch|Delete|Request)Mapping\s*\(\s*(?:value\s*=\s*)?['"]([^'"]+)""", 1, 2),
+        ),
     ),
     "c": Lang(
         "c", (".c", ".h"),
@@ -138,6 +166,7 @@ LANGS: dict[str, Lang] = {
         ),
         imports=_c(r"""^\s*import\b[^'"]*['"]([^'"]+)['"]""", r"""\brequire\(\s*['"]([^'"]+)['"]\s*\)"""),
         ts_module="tree_sitter_javascript",
+        routes=_routes_spec(*_JS_ROUTES),
     ),
     "typescript": Lang(
         "typescript", (".ts", ".tsx", ".mts", ".cts"),
@@ -149,6 +178,7 @@ LANGS: dict[str, Lang] = {
         ),
         imports=_c(r"""^\s*import\b[^'"]*['"]([^'"]+)['"]""", r"""\brequire\(\s*['"]([^'"]+)['"]\s*\)"""),
         ts_module="tree_sitter_typescript",  # parser name is "typescript"/"tsx"; see extract.py
+        routes=_routes_spec(*_JS_ROUTES),
     ),
     "go": Lang(
         "go", (".go",),

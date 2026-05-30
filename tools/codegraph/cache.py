@@ -12,7 +12,7 @@ import json
 import os
 import sqlite3
 
-SCHEMA = 6  # bump when extractor output shape changes
+SCHEMA = 7  # bump when extractor output shape changes (7: added per-file "routes")
 
 
 def _cache_dir() -> str:

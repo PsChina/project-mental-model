@@ -55,6 +55,18 @@ def entry_points(file_index: dict[str, dict]) -> list[tuple[str, int, str]]:
     return out[:12]
 
 
+def collect_routes(file_index: dict[str, dict]) -> list[tuple[str, str, str, int, str]]:
+    """Flatten per-file routes into (method, path, file, line, handler), sorted by
+    path then method — the HTTP surface of a backend repo, empty for non-web repos."""
+    out = []
+    for rel, idx in file_index.items():
+        for r in idx.get("routes", []):
+            method, path, line, handler = r
+            out.append((method, path, rel, line, handler))
+    out.sort(key=lambda t: (t[1], t[0], t[2], t[3]))
+    return out
+
+
 def _lang_summary(file_index: dict[str, dict]) -> str:
     by_lang = defaultdict(lambda: [0, 0])  # lang -> [files, defs]
     for idx in file_index.values():
@@ -147,6 +159,14 @@ def render_map(project, root, tier, graph, budget) -> str:
     out = ["\n".join(head)]
     out.append("\n## structure (dirs by symbol density)")
     out.append("\n".join(f"- {d}/ — {f}f, {de}d" for d, f, de in dirs))
+    routes = collect_routes(fi)
+    if routes:
+        out.append(f"\n## routes (HTTP surface, {len(routes)})")
+        out.append("\n".join(
+            f"  {m:<7} {p}  → {rel}:{ln}" + (f"  {h}" if h else "")
+            for m, p, rel, ln, h in routes[:40]))
+        if len(routes) > 40:
+            out.append(f"  … +{len(routes) - 40} more (use --json for all)")
     out.append(f"\n## key definitions (PageRank-ranked, ~{budget} tok)")
     out.append(budget_fit(ranked, fi, budget))
     return "\n".join(out).strip() + "\n"
@@ -223,6 +243,9 @@ def as_json(kind, project, root, tier, graph, arg=None, budget=400) -> str:
             "project": project, "tier": tier, "stack": detect_stack(root),
             "files": len(fi), "entry_points": [
                 {"file": r, "line": ln, "name": n} for r, ln, n in entry_points(fi)],
+            "routes": [
+                {"method": m, "path": p, "file": r, "line": ln, "handler": h}
+                for m, p, r, ln, h in collect_routes(fi)],
             "definitions": [
                 {"file": r, "ident": i, "score": round(s, 6)} for s, r, i in ranked[:budget]],
         }
