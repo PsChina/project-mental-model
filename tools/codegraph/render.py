@@ -195,6 +195,24 @@ def render_deps(rel, graph) -> str:
     return "\n".join(out).strip() + "\n"
 
 
+def render_impact(changed, graph) -> str:
+    r = graph.impact(changed)
+    total = len(r["direct"]) + len(r["transitive"])
+    out = [f"# codegraph impact  ({total} file(s) affected)"]
+    out.append("changed: " + (", ".join(r["changed"]) or "(none resolved)"))
+    if r["unresolved"]:
+        out.append("unresolved: " + ", ".join(a for a, _c in r["unresolved"]))
+    out.append(f"\n## directly affected ({len(r['direct'])})")
+    out.append("\n".join(f"  {f}  <-- {', '.join(ids[:8])}"
+                         for f, ids in r["direct"].items()) or "  (none)")
+    if r["transitive"]:
+        out.append(f"\n## transitively affected ({len(r['transitive'])})")
+        out.append("\n".join(f"  {f}  (depth {d})" for f, d in r["transitive"][:40]))
+    out.append(f"\n## affected tests ({len(r['tests'])}) — re-run these")
+    out.append("\n".join(f"  {f}" for f in r["tests"]) or "  (none detected)")
+    return "\n".join(out).strip() + "\n"
+
+
 # ---- json ------------------------------------------------------------------
 
 def as_json(kind, project, root, tier, graph, arg=None, budget=400) -> str:
@@ -221,6 +239,15 @@ def as_json(kind, project, root, tier, graph, arg=None, budget=400) -> str:
             payload = {"file": arg, "ambiguous": cand} if cand else {"file": arg, "found": False}
         else:
             payload = {"file": resolved, **graph.deps(resolved)}
+    elif kind == "impact":
+        r = graph.impact(arg)
+        payload = {
+            "changed": r["changed"],
+            "unresolved": [{"arg": a, "candidates": c} for a, c in r["unresolved"]],
+            "direct": [{"file": f, "uses": ids} for f, ids in r["direct"].items()],
+            "transitive": [{"file": f, "depth": d} for f, d in r["transitive"]],
+            "tests": r["tests"],
+        }
     else:
         payload = {}
     return json.dumps(payload, ensure_ascii=False, indent=2)

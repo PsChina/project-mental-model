@@ -101,6 +101,7 @@ python3 <skill>/tools/codegraph/cli.py <command> [args] [flags]
 | `where <symbol>` | definition site(s) `file:line [kind]` + signature + top reference sites |
 | `callers <symbol>` | every reference site of the symbol, ranked |
 | `deps <file>` | the file's imports / internal definer files it depends on / reverse deps |
+| `impact <file>...` | reverse-BFS blast radius of changing those files: directly + transitively affected files (with depth) and the test files among them to re-run |
 
 ### Flags
 
@@ -139,6 +140,11 @@ tool hardcodes no project-specific names.
 - References are matched by identifier name (no full type resolution), so
   `callers` over-matches on very common names; the ranking down-weights names
   defined in >5 files to compensate.
+- `impact` inherits the name-match limitation (it propagates through symbol names,
+  not resolved call edges) so it drops ubiquitous (>5-definer) and locally-shadowed
+  names to cut noise — treat its output as a heuristic blast radius, not a proof.
+  Test detection (`affected tests`) is filename/path heuristic; `--json` exposes the
+  full set if you want to filter differently.
 - T0 C/C++ misses functions whose `{` is on the next line (use T2 for C-heavy repos).
 - Kotlin / Objective-C use the regex tier (see Install).
 

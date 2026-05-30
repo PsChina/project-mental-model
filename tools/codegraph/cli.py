@@ -4,6 +4,7 @@
   codegraph where <symbol>      definition site(s) + top callers
   codegraph callers <symbol>    all reference sites, ranked
   codegraph deps <file>         imports / internal definers / reverse deps
+  codegraph impact <file>...    files downstream of a change + affected tests to re-run
 
 Global flags: --root DIR  --tier {auto,t0,t2}  --budget N  --json  --mentioned a,b
 
@@ -161,6 +162,7 @@ def main(argv=None) -> int:
     p_where = sub.add_parser("where", parents=[common]); p_where.add_argument("symbol")
     p_callers = sub.add_parser("callers", parents=[common]); p_callers.add_argument("symbol")
     p_deps = sub.add_parser("deps", parents=[common]); p_deps.add_argument("file")
+    p_impact = sub.add_parser("impact", parents=[common]); p_impact.add_argument("files", nargs="+")
     args = ap.parse_args(argv)
 
     # emit UTF-8 regardless of console codepage (Windows cp1252 would otherwise
@@ -174,9 +176,10 @@ def main(argv=None) -> int:
     root = args.root
     if root is None and args.cmd == "map" and args.path:
         root = args.path if os.path.isdir(args.path) else os.path.dirname(args.path) or "."
-    if root is None and args.cmd == "deps":
-        if os.path.isfile(args.file):
-            root = os.path.dirname(os.path.abspath(args.file))
+    if root is None and args.cmd in ("deps", "impact"):
+        first = args.file if args.cmd == "deps" else (args.files[0] if args.files else None)
+        if first and os.path.isfile(first):
+            root = os.path.dirname(os.path.abspath(first))
             # climb to a sensible repo root (where a manifest or .git lives)
             root = _repo_root(root) or root
     root = os.path.abspath(root or os.getcwd())
@@ -212,6 +215,11 @@ def main(argv=None) -> int:
                if os.path.exists(args.file) else args.file.replace(os.sep, "/"))
         out = (render.as_json("deps", project, root, real_tier, g, arg=rel)
                if args.json else render.render_deps(rel, g))
+    elif args.cmd == "impact":
+        rels = [(os.path.relpath(os.path.abspath(f), root).replace(os.sep, "/")
+                 if os.path.exists(f) else f.replace(os.sep, "/")) for f in args.files]
+        out = (render.as_json("impact", project, root, real_tier, g, arg=rels)
+               if args.json else render.render_impact(rels, g))
     else:
         out = ""
 

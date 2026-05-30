@@ -16,11 +16,27 @@ from __future__ import annotations
 import math
 import os
 import re
-from collections import defaultdict
+from collections import defaultdict, deque
 
 # "structured" = snake_case, camelCase, OR PascalCase (incl. single PascalCase words
 # like "Database" — those previously missed the camelCase test and were under-ranked).
 _STRUCTURED = re.compile(r"_|[a-z][A-Z]|[A-Z][a-z]")
+
+# Test-file heuristic (cross-language). Path: a `test/tests/__tests__/spec/specs`
+# segment. Filename: conventional markers that need a real boundary (underscore or
+# PascalCase T/S) so plain words like "latest.go" / "contest.py" don't false-match.
+_TEST_PATH = re.compile(r"(^|/)(tests?|__tests__|specs?)(/|$)", re.I)
+_TEST_FILE = re.compile(
+    r"^test_"                        # test_foo.py
+    r"|_test\.[A-Za-z]+$"            # foo_test.go, foo_test.py
+    r"|Tests?\.[A-Za-z]+$"           # FooTests.swift, FooTest.kt
+    r"|\.(test|spec)\.[A-Za-z]+$"    # foo.test.ts, foo.spec.ts
+    r"|Spec\.[A-Za-z]+$"             # FooSpec.kt
+)
+
+
+def _is_test_file(rel: str) -> bool:
+    return bool(_TEST_PATH.search(rel) or _TEST_FILE.search(os.path.basename(rel)))
 
 
 def _ident_mul(ident: str, n_definer_files: int, mentioned: set[str]) -> float:
@@ -193,6 +209,61 @@ class Graph:
             "external": external,
             "rdeps": {k: sorted(v) for k, v in sorted(
                 rdeps.items(), key=lambda kv: -self.rank.get(kv[0], 0.0))},
+        }
+
+    def impact(self, changed: list[str]) -> dict:
+        """What could break if `changed` files change: reverse-edge BFS over the
+        reference graph (X depends on Y when X references a symbol Y defines), plus
+        the test files among the blast radius to re-run.
+
+        Propagation is through SYMBOLS defined in the changed files — a file with no
+        defs has no downstream symbol dependents. Test detection is heuristic
+        (`_is_test_file`). `changed` are file args, resolved leniently like `deps`."""
+        seeds: list[str] = []
+        unresolved: list[tuple[str, list[str]]] = []
+        for c in changed:
+            r, cand = self.resolve_file(c)
+            seeds.append(r) if r else unresolved.append((c, cand))
+        seed_set = set(seeds)
+
+        # Cut name-match noise so impact isn't "everything": references are matched by
+        # name (no type resolution), so an edge through a ubiquitous name (__init__,
+        # build, run — defined in >5 files, same threshold as _ident_mul) or a name the
+        # referrer ALSO defines itself (local shadowing) almost never means a real
+        # cross-file dependency on the changed file. Both are dropped from propagation.
+        n_def = {ident: len(d) for ident, d in self.defines.items()}
+        own = {rel: {nm for nm, *_ in idx.get("defs", [])} for rel, idx in self.files.items()}
+        rev: dict[str, set[str]] = defaultdict(set)     # definer file -> referrer files
+        direct_idents: dict[str, set[str]] = defaultdict(set)  # referrer -> seed idents used
+        for (referrer, definer, ident, _count) in self.edges:
+            if n_def.get(ident, 0) > 5 or ident in own.get(referrer, ()):
+                continue
+            rev[definer].add(referrer)
+            if definer in seed_set and referrer not in seed_set:
+                direct_idents[referrer].add(ident)
+
+        depth = {s: 0 for s in seeds}
+        q = deque(seeds)
+        while q:
+            cur = q.popleft()
+            for dep in rev.get(cur, ()):
+                if dep not in depth:
+                    depth[dep] = depth[cur] + 1
+                    q.append(dep)
+
+        affected = [f for f in depth if f not in seed_set]
+        direct = sorted((f for f in affected if depth[f] == 1),
+                        key=lambda f: (-self.rank.get(f, 0.0), f))
+        transitive = sorted(((f, depth[f]) for f in affected if depth[f] >= 2),
+                            key=lambda t: (t[1], -self.rank.get(t[0], 0.0), t[0]))
+        tests = sorted((f for f in depth if _is_test_file(f)),
+                       key=lambda f: (depth[f], -self.rank.get(f, 0.0), f))
+        return {
+            "changed": seeds,
+            "unresolved": unresolved,
+            "direct": {f: sorted(direct_idents[f]) for f in direct},
+            "transitive": transitive,
+            "tests": tests,
         }
 
 
