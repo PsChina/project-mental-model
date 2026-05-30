@@ -169,6 +169,31 @@ if [ -n "$mm_root" ]; then
   [ "$found" -eq 0 ] && ok "落点 $mm_root 下暂无 <project>/CLAUDE.md(跳过 triggers 检查)"
 else ok "未检出落点目录(跳过 triggers 检查)"; fi
 
+echo "current-state 锚点对账(只读提示;防 current-state 腐烂成过期清单):"
+# 取 current-state.md 里反引号包裹、形如「符号链」(含点,如 LiveRepository.startRTMPStream)的锚点,
+# 取末段符号名去源码 grep —— 找不到 = 该坑/方案可能已失效或改名,提示人工确认是否删该条。
+# 纯提示:误报无害(改名/重载),不置 fail、不自动删。单 token 无点的锚点不取(太易误判)。
+if [ -n "$mm_root" ]; then
+  csfound=0
+  for cs in "$mm_root"/*/current-state.md; do
+    [ -e "$cs" ] || continue
+    csfound=1
+    proj=$(basename "$(dirname "$cs")")
+    anchors=$(grep -oE '`[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+`' "$cs" 2>/dev/null | tr -d '`' | sort -u)
+    stale=0; checked=0
+    for a in $anchors; do
+      sym="${a##*.}"; [ ${#sym} -lt 3 ] && continue
+      checked=$((checked+1))
+      # 排除 *.md:符号存在性须由源码证明,不能由心智文档(current-state/CLAUDE/memory 全是 .md)自证
+      grep -rqsI --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=build --exclude-dir=DerivedData --exclude='*.md' "$sym" "$ws" 2>/dev/null \
+        || { warn "current-state($proj) 锚点「${a}」在源码 grep 不到 → 可能已失效/改名,人工确认是否删该条"; stale=$((stale+1)); }
+    done
+    if   [ "$checked" -eq 0 ]; then ok "current-state($proj) 无符号锚点可对账(跳过)"
+    elif [ "$stale" -eq 0 ];   then ok "current-state($proj) $checked 个锚点符号都还在源码中"; fi
+  done
+  [ "$csfound" -eq 0 ] && ok "落点下暂无 current-state.md(跳过锚点对账)"
+else ok "未检出落点目录(跳过 current-state 锚点对账)"; fi
+
 echo
 if [ "$fail" -eq 0 ]; then echo "RESULT: PASS —— 核心四链就位,产物能生效(⚠️ 项为可选/建议,不阻塞)。"
 else echo "RESULT: FAIL —— 上面 ❌ 的核心链未就位,该项产物会变孤儿;按括号里的链号补(bootstrap.md)。⚠️ 项可选。"; fi

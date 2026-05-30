@@ -5,38 +5,59 @@ description: 为项目维护"开局即接续"的心智:① CLAUDE.md 宪法 ② 
 
 # Project Mental Model skill
 
-> 新会话第一秒接续项目心智、不重踩坑:**只采集读代码做不到的不可推导知识**。
-> 检查项目 CLAUDE.md 入口是否含落点指针:没有就创建,有就更新对应心智文件;把本次对话按判据沉淀,并更新入口指针。
-> 写完跑检查工具确认产物生效。
+让新会话第一秒就接上项目心智、不重踩老坑。核心原则:**只采集"读代码做不到"的知识** —— 凡是能从代码、注释、全局 rule、模型常识推出来的,一律不记。
 
-## 三产物
-- **① 宪法** 项目 `CLAUDE.md`(常驻 ≤150 行,顶 `triggers:` frontmatter 否则不注入):范式/跨端约束 + 业务主线一句 + 踩坑指针 + [AI 标准动作](templates/ai-actions.md)。
-- **② 认知** auto-memory(`projects/*/memory/`):harness 每会话原生注入;写文件必同步加 MEMORY.md 索引行,否则不注入(判据见「认知存入规则」)。
-- **③ 易失** [`current-state.md`](templates/current-state.md):在途阶段/临时方案/坑/债/阻塞,消除即删、无硬上限;已沉淀进 ② 的坑只留 link。
+每次的工作方式:检查项目 CLAUDE.md 里有没有指向心智文件的指针 —— 没有就创建,有就更新对应文件;把本次对话该沉淀的东西按判据存好,更新指针;最后跑检查脚本确认产物真的会被加载。
 
-## 落点 · 入口闸
-- 落点 `dev-cases/` > `docs/mental-model/` > `.mental-model/`(`--project`/`--where` 覆盖)。
-- **入口闸**:CLAUDE.md 无落点指针 → `bash …/templates/bootstrap-verify.sh --install`(一键装核心链;唯一跨机器必需 = 项目 CLAUDE.md 指针;详 [bootstrap.md](bootstrap.md))。
+## 三种产物
 
-## 认知存入规则
-auto-memory 是**末位**(40 条实测仅 3 过闸)。**两道闸,全过才存:**
-- **① 会复发**:根因是稳定不变量(设备/协议/架构/SDK)才会;一次性的即便被纠正也不存。
-- **② 冷测试**:只读 repo 的新 AI 能从「代码+注释+全局 rule+模型常识」推对的不存。
-  - 用户纠正只是触发,不是充分条件:「我不知道」→ 存;「知道没执行好」→ 不存。
+新会话能接上心智靠这三样,按"该写哪、能活多久"分工:
 
-**过闸后,往最耐久处写:**
-- 能进出错点代码注释/类型 → 写注释(最耐久);写不进、又推不出 → memory(末位)。
-- 教训一旦落进更耐久处,对应 memory 即 **supersede**(避免重复)。
+- **① 宪法 = 项目 `CLAUDE.md`**(常驻,≤150 行)
+  顶部要有 `triggers:` frontmatter,否则 harness 不会按用户措辞注入它。内容只放:开发范式 / 跨端约束、业务主线一句话、踩坑指针,以及 [AI 标准动作](templates/ai-actions.md)。
 
-拿不准不存,例见 [memory-bar-examples.md](memory-bar-examples.md)。
+- **② 认知 = auto-memory**(`projects/*/memory/`)
+  harness 每次会话原生注入。**写了 memory 文件,必须同步往 MEMORY.md 加一行索引**,否则它不会被注入(到底什么该写进来,见下面「什么该进 memory」)。
 
-## 流程
-- **A 新建/刷新**(`/pmm`、`--rebuild`、"整理/重做/全量"):并行 Explore 扫源码注释找坑 + 粗读结构理解业务主线 → 写/刷新 ①③ + 顶层 INDEX 指针,标 `Last verified`;刷新 = 增量。不手写会腐烂的结构地图,大库要结构才用 codegraph(命令见铁律 2)。
-- **B 会话沉淀**(`log`,或 build 成功 + 改 ≥5 文件 / feature 闭合;≤30 秒只回顾本会话):按「认知存入规则」存入 auto-memory;收尾自检 MEMORY 索引行 + `triggers:`。
-- **check**(`bootstrap-verify.sh`,默认只读):四链 PASS/WARN/FAIL + 孤儿对账(`--fix` 补)+ 覆盖自检 + `.pmm-pending` 提示;`--install` 装核心链。
+- **③ 易失态 = [`current-state.md`](templates/current-state.md)**
+  记在途阶段、临时方案、坑、技术债、阻塞。不设条数上限,判断标准是"每条现在还成立吗" —— 失效一条删一条。已经沉淀进 ② 的坑,这里只留一行链接,不重抄内容。
+
+## 落点 · 入口指针
+
+- **落点**(三产物放在哪个目录):优先 `dev-cases/`,其次 `docs/mental-model/`,再次 `.mental-model/`(用 `--project` / `--where` 覆盖)。
+- **入口指针**:项目 CLAUDE.md 必须有一行指向落点,否则新会话根本找不到心智。没有就跑 `bash …/templates/bootstrap-verify.sh --install` 一键装好(跨机器唯一真正必需的就是这行指针;细节见 [bootstrap.md](bootstrap.md))。
+
+## 什么该进 memory(门槛最高的一道判据)
+
+auto-memory 是末位选择,门槛最高 —— 实测 40 条候选只有 3 条过关。**两道闸,都过才存:**
+
+1. **会复发吗** —— 根因是稳定不变量(设备 / 协议 / 架构 / SDK 行为)才会复发。一次性的问题,即便被纠正过,也不存。
+2. **推得出来吗(冷测试)** —— 设想一个只读得到这个 repo 的新 AI,它能不能从「代码 + 注释 + 全局 rule + 模型常识」自己推对?能推对的不存。
+   - 用户纠正你只是触发信号、不是充分条件:「我也不知道这个坑」→ 存;「这我知道,只是没执行好」→ 不存。
+
+**过了闸,往最耐久的地方写:**
+- 能写进出错点的代码注释 / 类型签名 → 写那儿(最耐久,跟代码一起活)。
+- 写不进、又推不出来的不变量 → 才进 memory(末位)。
+- 一条教训一旦落进更耐久的地方,对应的 memory 就标 supersede,避免两处重复。
+
+拿不准就不存。正反例见 [memory-bar-examples.md](memory-bar-examples.md)。
+
+## 三种流程
+
+- **A 新建 / 刷新**(触发:`/pmm`、`--rebuild`、用户说"整理 / 重做 / 全量")
+  并行 Explore 扫源码注释找坑 + 粗读结构理解业务主线 → 写或刷新 ①③ 和顶层 INDEX 指针,标上 `Last verified` 日期。刷新是增量、不是推倒重来。**不手写会随代码腐烂的结构地图**;大库确实需要结构时才用 codegraph(命令见铁律 2)。
+
+- **B 会话沉淀**(触发:`log`,或 build 通过 + 改了 ≥5 文件 / 一个 feature 闭合)
+  只回顾本次会话(≤30 秒),按上面「什么该进 memory」存入 auto-memory;收尾自检 MEMORY 索引行和 `triggers:` 还在不在。
+
+- **check**(跑 `bootstrap-verify.sh`,默认只读不写)
+  报四条生效链的 PASS/WARN/FAIL + 孤儿 memory 对账(`--fix` 自动补索引)+ current-state 锚点对账(符号 grep 不到的标"可能失效")+ 覆盖自检 + 读 `.pmm-pending` 提示。`--install` 则一键装好生效链。
 
 ## 铁律
-1. CLAUDE.md ≤150 行常驻,只放不可从 代码/lockfile/git 推导的;引用代码用 **file+符号锚点**、不写易漂行号。
-2. **不维护可推导的结构地图(模块/调用图/文件树)** —— 读代码/grep,大库才用 codegraph(skill 内 vendored 零安装 `python3 tools/codegraph/cli.py map|where|callers|deps|impact`;外部 `pipx install "git+https://github.com/PsChina/project-mental-model.git#subdirectory=tools/codegraph"`)。
-3. 增量 > 全量,recency-wins,不写 session log/文件清单;**永不自动 commit/push**。
-4. **自包含可移植**:复制目录 + 跑一次 `--install` 即在新机生效,包内零硬编码路径;全局索引注入(session-start.js)是可选 Tier3。
+
+1. **CLAUDE.md ≤150 行常驻**,只放无法从 代码 / lockfile / git 推导的内容;引用代码用「文件 + 符号名」锚点,别写会漂的行号。
+2. **不维护可推导的结构地图**(模块图 / 调用图 / 文件树)—— 要这些就当场读代码 / grep。大库才用 codegraph(skill 内已 vendored、零安装):
+   `python3 tools/codegraph/cli.py map|where|callers|deps|impact <file>...`
+   (想全局安装:`pipx install "git+https://github.com/PsChina/project-mental-model.git#subdirectory=tools/codegraph"`)
+3. **增量优先于全量**,新覆盖旧(recency-wins);不写流水账 / 文件清单;**永不自动 commit / push**。
+4. **自包含、可移植**:复制整个目录 + 跑一次 `--install` 就在新机生效,包内无硬编码路径。全局索引注入(session-start.js)是可选项(Tier3),核心不依赖它。
