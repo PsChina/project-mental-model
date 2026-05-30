@@ -37,13 +37,15 @@ fm_val() { awk -v k="$2" 'NR==1&&$0=="---"{f=1;next} f&&$0=="---"{exit} f&&$0~"^
 echo "PMM bootstrap-verify @ $ws"
 echo
 
-# ---- --install:幂等装核心链(只补缺,不覆盖);装完落到下方 verify 复核 ----
+# ---- --install:幂等装核心链。包内模板文件每次 cp -f 重新同步(改了 skill 跑一次即刷新生效版;
+#      用 cp 不用 symlink —— Claude Code discovery 不跟随 commands/skills 软链,bug #14836/#25367);
+#      用户文件(MEMORY/CLAUDE.md/settings)只补缺、不覆盖。装完落到下方 verify 复核 ----
 tpl="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # = templates/(本脚本所在目录,模板源)
 if [ "$install" -eq 1 ]; then
-  echo "INSTALL —— 幂等装核心链(只补缺):"
-  # ④ /pmm 命令别名
-  if [ ! -f "$hc/commands/pmm.md" ] && [ -f "$tpl/pmm.md" ]; then
-    mkdir -p "$hc/commands" && cp "$tpl/pmm.md" "$hc/commands/pmm.md" && echo "  ✚ 装 /pmm 别名(重开会话生效)"
+  echo "INSTALL —— 装/同步核心链(包内模板重新同步,用户文件只补缺):"
+  # ④ /pmm 命令别名(包内文件,每次重新同步;cp 非 symlink)
+  if [ -f "$tpl/pmm.md" ]; then
+    mkdir -p "$hc/commands" && cp -f "$tpl/pmm.md" "$hc/commands/pmm.md" && echo "  ✚ 同步 /pmm 别名 → 重开会话生效;本次会话先用全名 /project-mental-model(skill 已加载)"
   fi
   # ③ 本项目 MEMORY.md 骨架
   if [ ! -f "$proj_mem" ] && [ -f "$tpl/MEMORY.md" ]; then
@@ -64,7 +66,7 @@ PY
   fi
   # ②b 保鲜 post-commit(自包含、低成本;可选)
   if [ -f "$tpl/pmm-staleness-detect.sh" ]; then
-    mkdir -p "$hc/hooks"; [ -f "$hc/hooks/pmm-staleness-detect.sh" ] || cp "$tpl/pmm-staleness-detect.sh" "$hc/hooks/"
+    mkdir -p "$hc/hooks"; cp -f "$tpl/pmm-staleness-detect.sh" "$hc/hooks/"   # 包内文件,每次重新同步
     if [ -d "$ws/.git" ] && [ ! -e "$ws/.git/hooks/post-commit" ]; then
       ln -s "$hc/hooks/pmm-staleness-detect.sh" "$ws/.git/hooks/post-commit" 2>/dev/null && echo "  ✚ 本项目 post-commit 保鲜检测就位"
     fi
@@ -76,9 +78,17 @@ PY
   else
     printf '> 📍 项目心智模型在 <落点>/<project>/ —— 新会话先读 CLAUDE.md(宪法)+ current-state.md。\n' > "$ws/CLAUDE.md"; echo "  ✚ 建最小 $ws/CLAUDE.md 入口(把 <落点> 改成真实路径)"
   fi
-  echo "  —— 核心链已就位;下面 verify 复核(命令别名需重开会话):"
+  echo "  —— 核心链已就位。/pmm 重开会话生效(命令无热重载、硬约束);本次直接用全名 /project-mental-model。下面 verify 复核:"
   echo
 fi
+
+echo "链⓪ skill 原生可加载(Claude Code 从 ~/.claude/skills/ 加载):"
+skill_root="$(dirname "$tpl")"; want="$hc/skills/project-mental-model"
+if [ ! -f "$skill_root/SKILL.md" ]; then bad "本目录无 SKILL.md,不是有效 skill 包(链⓪)"
+elif [ -L "$want" ]; then warn "$want 是 symlink → 命中 discovery bug #25367(/skills 列表/发现失败,执行仍可)→ 建议改真实目录"
+elif [ "$skill_root" != "$want" ]; then warn "skill 不在 $want(当前 $skill_root)→ 不会被 Claude Code 原生加载;把整个目录放到该位置再 --install"
+else ok "skill 真实目录就位:$want"; fi
+echo
 
 echo "链① 原生 CLAUDE.md 入口(唯一跨机器):"
 if [ -f "$ws/CLAUDE.md" ]; then
