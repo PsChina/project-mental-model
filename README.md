@@ -1,66 +1,68 @@
-# project-mental-model（PMM）
+# project-mental-model (PMM)
 
-> 一个用于 Claude Code 的「项目心智」技能：让每个新会话第一秒就接上这个项目的来龙去脉、不重踩老坑。
+**English** · [简体中文](README.zh-CN.md)
 
-AI agent 有个老毛病：新会话一开就"失忆"——上次纠正过的坑、定下的架构决策、某个组件的非显性约束，全忘光，你只能一遍遍重讲。PMM 解决的就是这件事。
+> A "project mental model" skill for Claude Code: lets every new session pick up this project's full context in the first second — no re-stepping on old landmines.
 
-核心原则只有一句：**只记"读代码做不到"的知识**。凡是能从代码、注释、全局规则、模型常识推出来的，一律不记——避免把记忆库堆成噪音。
+AI agents have a chronic problem: every new session starts amnesiac — the pitfall you corrected last time, the architecture decision you settled on, a component's non-obvious constraint, all gone, and you re-explain from scratch. PMM fixes exactly this.
 
-## 三种产物
+The core principle is one sentence: **only record what reading the code can't give you.** Anything derivable from code, comments, global rules, or model common sense is not recorded — so the memory store never piles up into noise.
 
-新会话能"接上心智"靠这三样，按「该写哪、能活多久」分工：
+## Three artifacts
 
-| 产物 | 位置 | 角色 |
+What lets a new session "pick up the context" is these three, split by *where it belongs* and *how long it lives*:
+
+| Artifact | Location | Role |
 |---|---|---|
-| **① 宪法** | 项目 `CLAUDE.md`（常驻 ≤150 行） | 开发范式 / 跨端约束 / 业务主线一句话 / 踩坑指针 |
-| **② 认知** | auto-memory | 不可推导的稳定不变量（设备 / 协议 / 架构 / SDK 行为） |
-| **③ 易失态** | `current-state.md` | 在途阶段 / 临时方案 / 已知坑 / 技术债 / 阻塞 |
+| **① Constitution** | project `CLAUDE.md` (resident, ≤150 lines) | dev paradigm / cross-platform constraints / one-line business thread / pitfall pointers |
+| **② Cognition** | auto-memory | non-derivable stable invariants (device / protocol / architecture / SDK behavior) |
+| **③ Volatile state** | `current-state.md` | in-flight phase / temporary workarounds / known pitfalls / tech debt / blockers |
 
-## 进什么记忆：两道闸，都过才记
+## The bar: two gates, store only if both pass
 
-1. **会复发吗** —— 根因是稳定不变量才会复发。一次性问题不记。
-2. **推得出来吗（冷测试）** —— 设想一个只读得到这个 repo 的新 AI，它能不能自己推对？能推对的不记。
+1. **Will it recur?** — only a stable invariant root-cause recurs. One-off problems aren't stored.
+2. **Can it be derived (cold test)?** — imagine a fresh AI that can only read this repo. Could it figure this out on its own? If yes, don't store it.
 
-实测 40 条候选只有 3 条过关。拿不准就不记。
+In practice ~3 of 40 candidates pass. When in doubt, don't store.
 
-## 自主沉淀（不等里程碑、不等人调用）
+## Autonomous capture (no milestone, no manual call)
 
-PMM 自带一个全局 `UserPromptSubmit` hook：**每当你的消息里含决策 / 纠正 / 新约束，AI 当场过双闸，命中就静默记录或更新既有条目**（不堆重复），不用你开口说"记一下"。
+PMM ships a global `UserPromptSubmit` hook: **whenever your message contains a decision / correction / new constraint, the AI runs the two gates on the spot and silently records or updates the existing entry** (no duplicates) — you don't have to say "remember this."
 
-> 为什么钉在"你发消息"这一刻：幸存者偏差 —— AI 做得好你直接走人、不会有下一条消息；你发消息（尤其纠正）才是最高价值信号。
+> Why pin it to "the moment you send a message": survivorship bias — if the AI did great you just leave and there's no next message; your sending a message (especially a correction) is the highest-value signal.
 
-## 安装
+## Install
 
 ```bash
 cp -r project-mental-model ~/.claude/skills/project-mental-model
 bash ~/.claude/skills/project-mental-model/templates/bootstrap-verify.sh --install
 ```
 
-`--install` 幂等地装好生效链（命令别名 / auto-memory 骨架 / 保鲜与自主沉淀 hook / CLAUDE.md 入口指针），装完自动复核。重开一次会话让 `/pmm` 别名生效。
+`--install` idempotently sets up the chains (command alias / auto-memory skeleton / freshness & autonomous-capture hooks / CLAUDE.md entry pointer) and re-verifies. Reopen a session once so the `/pmm` alias registers.
 
-## 命令
+## Commands
 
-| 命令 | 作用 |
+| Command | Action |
 |---|---|
-| `/pmm` | 新建 / 增量刷新项目心智 |
-| `/pmm log` | 立即沉淀本次会话该记的东西 |
-| `/pmm check` | 体检四条生效链 + 孤儿记忆对账 + 锚点对账 |
-| `/pmm --rebuild` | 放弃增量从头做（先列将覆盖文件再执行） |
+| `/pmm` | create / incrementally refresh the project mental model |
+| `/pmm log` | capture what this session is worth recording, now |
+| `/pmm check` | health-check the four chains + orphan-memory reconciliation + anchor reconciliation |
+| `/pmm --rebuild` | rebuild from scratch (lists files to overwrite first) |
 
-## 不手写会腐烂的结构地图
+## Don't hand-maintain rotting structure maps
 
-需要模块图 / 调用图 / 改动波及面时，当场读代码或用内置（已 vendored、零安装）的 codegraph：
+When you need a module map / call graph / impact set, read the code on the spot or use the vendored (zero-install) codegraph:
 
 ```bash
 python3 tools/codegraph/cli.py map|where|callers|deps|impact <file>...
 ```
 
-## 铁律
+## Iron rules
 
-- CLAUDE.md ≤150 行常驻，只放无法从代码 / lockfile / git 推导的内容；引用代码用「文件 + 符号名」锚点，不写会漂的行号。
-- 不维护可推导的结构地图。
-- 增量优先于全量，新覆盖旧（recency-wins）；不写流水账。
-- 自包含、可移植：复制整个目录 + 跑一次 `--install` 就在新机生效，包内无硬编码路径。
+- CLAUDE.md stays ≤150 resident lines; only what can't be derived from code / lockfile / git; reference code by "file + symbol name" anchors, not drifting line numbers.
+- Don't maintain derivable structure maps.
+- Incremental over full rebuild, new overrides old (recency-wins); no running logs.
+- Self-contained & portable: copy the whole directory + run `--install` once and it works on a new machine; no hard-coded paths inside.
 
 ## License
 
