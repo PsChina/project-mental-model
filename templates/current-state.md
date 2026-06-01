@@ -3,7 +3,8 @@
 复制到落点的 `<project>/current-state.md`:
 
 ```markdown
-# <project> · current-state ｜ Last scanned: YYYY-MM-DD ｜ 验证: grep <关键类名>
+# <project> · current-state ｜ Last verified: YYYY-MM-DD ｜ 验证: grep <关键类名>
+<!-- 头部只此一行日期戳。❌不写: run 计数(#6/#5) / "本轮做了X"叙述 / 行号A→B校正 / commit hash / "无新增memory" / 删除线残骸 —— 那些是 git 的活,写进来就成流水账(SKILL 铁律#3) -->
 ## 🚧 当前阶段   ## 🩹 临时方案(附何时撤)   ## ⚠️ 已知坑(symptom→cause→fix)
 ## 🧹 优化债     ## ⛔ 阻塞
 ```

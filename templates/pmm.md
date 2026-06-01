@@ -11,7 +11,7 @@ description: 项目心智模型(别名 /pmm)。无参=全量建/刷新;/pmm log=
 | 输入 | 模式 | 动作 |
 |---|---|---|
 | (空) | A 建/刷新 | 落点不存在 → 首建(CLAUDE.md 宪法 + current-state);已存在 → 增量刷新 current-state |
-| `log` | B 沉淀 | 立即走模式 B 心智沉淀(认知→memory / 易失状态→current-state / 文件清单→不记),不重扫源码 |
+| `log` | B 沉淀 | 立即走模式 B 心智沉淀(认知→memory / 易失状态→current-state / 文件清单→不记),不重扫源码。**发现折叠进 current-state 对应分类 + 日期戳到今天 —— 不是追加 "#N 本轮做了 X" run-log**(SKILL 铁律#3) |
 | `check` | — | 体检(不写文件):bootstrap-verify 四链 + 孤儿 memory / triggers / 入口指针机检 + current-state 锚点对账(符号 grep 不到的标"可能失效")+ 覆盖自检(memory-bar 五类逐类问有无未沉淀)+ 读 pmm-pending flag 报告 |
 | `--rebuild` | A 重做 | 放弃增量从头做,**先列将覆盖的文件,待用户确认再执行** |
 | `--project <name>` / `--where <path>` | — | 覆盖项目名 / 落点,再按上面模式跑 |
