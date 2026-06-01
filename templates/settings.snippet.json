@@ -6,6 +6,9 @@
     "hooks": {
       "SessionStart": [
         { "hooks": [ { "type": "command", "command": "node $HOME/.claude/hooks/session-start.js" } ] }
+      ],
+      "UserPromptSubmit": [
+        { "hooks": [ { "type": "command", "command": "node $HOME/.claude/hooks/pmm-capture-detect.js" } ] }
       ]
     }
   },

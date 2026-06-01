@@ -21,10 +21,11 @@ bash templates/bootstrap-verify.sh --install
 1. **CLAUDE.md 入口指针** —— 跨机器唯一真正必需的一环。
    从 cwd 向上、能被原生加载的那个 CLAUDE.md(通常是项目 repo 根,双端各一个),留一行 `> 📍 项目心智模型在 <落点>/<project>/`。它随项目 git 走,任何机器都看得到。
 
-2. **注入 hook** —— 让心智按场景自动出现,三个子项:
+2. **注入 hook** —— 让心智按场景自动出现,四个子项:
    - (a) dev-cases 注入器:`templates/inject.js` + 把 `settings.snippet.json#_workspace` merge 进去;
    - (b) 保鲜 post-commit:把 `templates/pmm-staleness-detect.sh` symlink 到 `<repo>/.git/hooks/`;
-   - (c) 全局索引 session-start:merge `#_global`(**可选,Tier3**,核心不依赖)。
+   - (c) 全局索引 session-start:merge `#_global`(**可选,Tier3**,核心不依赖);
+   - (d) 自主沉淀触发器:把 `templates/pmm-capture-detect.js` 拷到 `~/.claude/hooks/` + merge `#_global` 的 `UserPromptSubmit` —— 用户消息含决策/纠正/约束时自主触发流程 B(`--install` 自动装;断了仍可手动 `/pmm log`)。
 
 3. **auto-memory** —— 设 `autoMemoryEnabled: true`(merge `#_global`),并把 `templates/MEMORY.md` 拷到 `projects/<把 cwd 路径里的 / 换成 ->/memory/`。
 

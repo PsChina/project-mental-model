@@ -71,6 +71,23 @@ PY
       ln -s "$hc/hooks/pmm-staleness-detect.sh" "$ws/.git/hooks/post-commit" 2>/dev/null && echo "  ✚ 本项目 post-commit 保鲜检测就位"
     fi
   fi
+  # ②d 自主沉淀触发器 pmm-capture-detect.js(全局 UserPromptSubmit;包内文件每次重新同步)
+  if [ -f "$tpl/pmm-capture-detect.js" ]; then
+    mkdir -p "$hc/hooks"; cp -f "$tpl/pmm-capture-detect.js" "$hc/hooks/" && echo "  ✚ 同步自主沉淀触发器 → ~/.claude/hooks/pmm-capture-detect.js"
+    if command -v python3 >/dev/null 2>&1; then
+      python3 - "$settings" <<'PY' && echo "  ✚ 注册 UserPromptSubmit → pmm-capture-detect.js 到活 settings.json"
+import json,sys,os
+p=sys.argv[1]
+try: d=json.load(open(p)) if os.path.exists(p) else {}
+except Exception: d={}
+hooks=d.setdefault("hooks",{}); ups=hooks.setdefault("UserPromptSubmit",[])
+if any(h.get("command","").find("pmm-capture-detect.js")>=0 for e in ups for h in e.get("hooks",[])): sys.exit(1)
+ups.append({"hooks":[{"type":"command","command":"node $HOME/.claude/hooks/pmm-capture-detect.js"}]})
+os.makedirs(os.path.dirname(p) or ".",exist_ok=True)
+json.dump(d,open(p,"w"),indent=2,ensure_ascii=False)
+PY
+    fi
+  fi
   # ① CLAUDE.md 入口指针(改项目文件、不 commit;仅在完全无指针时补最小入口)
   if [ -f "$ws/CLAUDE.md" ]; then
     grep -qE '项目心智模型在|dev-cases|mental-model|current-state' "$ws/CLAUDE.md" 2>/dev/null || \
@@ -121,6 +138,11 @@ fi
 # (c) 全局索引注入(可选 Tier3,公司 brain 跨 skill 层)
 if grep -q 'session-start.js' "$settings" 2>/dev/null; then ok "session-start.js 已注册(可选:注入全局公司 brain 索引 + pmm-pending 提示)"
 else warn "session-start.js 未注册 → 缺开局自动提示(可选 Tier3;pmm 核心不依赖,可用 /pmm check 手动查 pending)"; fi
+# (d) 自主沉淀触发器 pmm-capture-detect.js(UserPromptSubmit;让流程 B 在用户消息提交时自主触发)
+if [ -f "$hc/hooks/pmm-capture-detect.js" ]; then
+  if grep -q 'pmm-capture-detect.js' "$settings" 2>/dev/null; then ok "pmm-capture-detect.js 已就位且已注册到 UserPromptSubmit(自主沉淀触发)"
+  else warn "pmm-capture-detect.js 在 ~/.claude/hooks/ 但 settings.json 未注册 UserPromptSubmit → 自主沉淀不触发,只能手动 /pmm log(链②d:--install 自动 merge)"; fi
+else warn "pmm-capture-detect.js 不在 ~/.claude/hooks/ → 自主沉淀不触发,只能手动 /pmm log(链②d:跑 --install 同步;断了核心仍可手动沉淀)"; fi
 
 echo "链③ auto-memory:"
 if grep -q '"autoMemoryEnabled"[[:space:]]*:[[:space:]]*true' "$settings" 2>/dev/null; then ok "autoMemoryEnabled:true 在活 settings.json"
