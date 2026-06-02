@@ -1,6 +1,6 @@
 ---
 name: project-mental-model
-description: 为项目维护"开局即接续"的心智:① CLAUDE.md 宪法 ② 不可推导认知进 auto-memory ③ current-state 易失态;结构交给读代码/codegraph、不手写。`/pmm` 建·`log` 沉淀·`check` 体检;首次 `bootstrap-verify.sh --install` 一键搭建。
+description: 为项目维护"开局即接续"的心智:① CLAUDE.md 宪法 ② 不可推导认知进 auto-memory ③ current-state 易失态;结构交给读代码/codegraph、不手写。何时用:新会话接续陌生/久未碰的项目、里程碑收尾(多文件 refactor / commit ≥3 文件 / 用户说"收工")刷新心智、用户说"建/更新项目心智·记住项目状态"、或显式 `/pmm` 建·`log` 沉淀·`check` 体检;首次 `bootstrap-verify.sh --install` 一键搭建。不要用:单点代码问答/写功能/查某文件等能从代码·注释·全局 rule·模型常识推出来的。
 ---
 
 # Project Mental Model skill
