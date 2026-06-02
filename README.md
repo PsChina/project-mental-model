@@ -27,7 +27,9 @@ In practice ~3 of 40 candidates pass. When in doubt, don't store.
 
 ## Autonomous capture (no milestone, no manual call)
 
-PMM ships a global `UserPromptSubmit` hook: **whenever your message contains a decision / correction / new constraint, the AI runs the two gates on the spot and silently records or updates the existing entry** (no duplicates) — you don't have to say "remember this."
+PMM ships a global `UserPromptSubmit` hook: **whenever your message contains a decision / correction / new constraint, the AI does a cheap first pass on the spot** — you don't have to say "remember this."
+
+But **the working AI does not get to write memory itself** — it's biased (just-discovered-it-so-it-feels-precious + survivorship bias), and self-writing is the root of garbage piling up. Every plausible candidate is handed to an **independent reviewer `memory-gatekeeper`** (a subagent shipped with this package): it did not do the work, knows only the strict bar, **defaults to REJECT**, and independently rules reject / update-existing / add — only a pass gets written, silently. Taking "write or not" out of the biased party's hands is the structural defense against noise entering the store.
 
 > Why pin it to "the moment you send a message": survivorship bias — if the AI did great you just leave and there's no next message; your sending a message (especially a correction) is the highest-value signal.
 
@@ -38,7 +40,7 @@ cp -r project-mental-model ~/.claude/skills/project-mental-model
 bash ~/.claude/skills/project-mental-model/templates/bootstrap-verify.sh --install
 ```
 
-`--install` idempotently sets up the chains (command alias / auto-memory skeleton / freshness & autonomous-capture hooks / CLAUDE.md entry pointer) and re-verifies. Reopen a session once so the `/pmm` alias registers.
+`--install` idempotently sets up the chains (command alias / auto-memory skeleton / freshness & autonomous-capture hooks / **`memory-gatekeeper` reviewer agent** / CLAUDE.md entry pointer) and re-verifies. Reopen a session once so the `/pmm` alias registers.
 
 ## Commands
 

@@ -27,7 +27,9 @@ AI agent 有个老毛病：新会话一开就"失忆"——上次纠正过的坑
 
 ## 自主沉淀（不等里程碑、不等人调用）
 
-PMM 自带一个全局 `UserPromptSubmit` hook：**每当你的消息里含决策 / 纠正 / 新约束，AI 当场过双闸，命中就静默记录或更新既有条目**（不堆重复），不用你开口说"记一下"。
+PMM 自带一个全局 `UserPromptSubmit` hook：**每当你的消息里含决策 / 纠正 / 新约束，AI 当场廉价初筛**，不用你开口说"记一下"。
+
+但**干活的 AI 自己不拍板写** —— 它有偏见（刚发现觉得很香 + 幸存者偏差），自写就是噪音入库的根源。疑似候选一律**派一个独立审核员 `memory-gatekeeper`**（随包附带的 subagent）过审：它没参与本次工作、只认那条严格的 bar、**默认拒**，按双闸独立判 拒 / 更新既有 / 新增，过审才静默落盘。把"写不写"从有偏见的人手里拿走，是挡噪音入库的结构性防线。
 
 > 为什么钉在"你发消息"这一刻：幸存者偏差 —— AI 做得好你直接走人、不会有下一条消息；你发消息（尤其纠正）才是最高价值信号。
 
@@ -38,7 +40,7 @@ cp -r project-mental-model ~/.claude/skills/project-mental-model
 bash ~/.claude/skills/project-mental-model/templates/bootstrap-verify.sh --install
 ```
 
-`--install` 幂等地装好生效链（命令别名 / auto-memory 骨架 / 保鲜与自主沉淀 hook / CLAUDE.md 入口指针），装完自动复核。重开一次会话让 `/pmm` 别名生效。
+`--install` 幂等地装好生效链（命令别名 / auto-memory 骨架 / 保鲜与自主沉淀 hook / **沉淀审核员 `memory-gatekeeper` agent** / CLAUDE.md 入口指针），装完自动复核。重开一次会话让 `/pmm` 别名生效。
 
 ## 命令
 

@@ -5,7 +5,8 @@
 #   workspace 默认 = 当前目录(默认只读体检,不写文件)
 #   --fix     = 把「孤儿 memory」从只报告升级为自动补 MEMORY.md 索引行(只补有 description 的)
 #   --install = 一键幂等装核心链(只补缺、不覆盖):/pmm 别名 + 本项目 MEMORY 骨架 +
-#               autoMemoryEnabled + 保鲜 post-commit + CLAUDE.md 入口指针,装完自动复核。
+#               autoMemoryEnabled + 自主沉淀触发器 + 沉淀审核员 memory-gatekeeper +
+#               保鲜 post-commit + CLAUDE.md 入口指针,装完自动复核。
 #               ★ 首次搭建只跑这一条,替代过去手动逐链修(复制模板/symlink/merge settings)。
 # 退出码:FAIL(❌,核心链未就位)→ 非 0;WARN(⚠️,可选/建议项)不影响退出码;全 PASS → 0。
 set -uo pipefail
@@ -88,6 +89,11 @@ json.dump(d,open(p,"w"),indent=2,ensure_ascii=False)
 PY
     fi
   fi
+  # ②e 沉淀审核员 memory-gatekeeper(全局 subagent;包内文件每次重新同步)
+  #     静默自主沉淀必经它独立过审 —— 主 agent 不再自己拍板写 memory(去偏见 + 默认拒)。
+  if [ -f "$tpl/memory-gatekeeper.md" ]; then
+    mkdir -p "$hc/agents"; cp -f "$tpl/memory-gatekeeper.md" "$hc/agents/" && echo "  ✚ 同步沉淀审核员 → ~/.claude/agents/memory-gatekeeper.md(候选派它过审,主 agent 不自写)"
+  fi
   # ① CLAUDE.md 入口指针(改项目文件、不 commit;仅在完全无指针时补最小入口)
   if [ -f "$ws/CLAUDE.md" ]; then
     grep -qE '项目心智模型在|dev-cases|mental-model|current-state' "$ws/CLAUDE.md" 2>/dev/null || \
@@ -143,6 +149,9 @@ if [ -f "$hc/hooks/pmm-capture-detect.js" ]; then
   if grep -q 'pmm-capture-detect.js' "$settings" 2>/dev/null; then ok "pmm-capture-detect.js 已就位且已注册到 UserPromptSubmit(自主沉淀触发)"
   else warn "pmm-capture-detect.js 在 ~/.claude/hooks/ 但 settings.json 未注册 UserPromptSubmit → 自主沉淀不触发,只能手动 /pmm log(链②d:--install 自动 merge)"; fi
 else warn "pmm-capture-detect.js 不在 ~/.claude/hooks/ → 自主沉淀不触发,只能手动 /pmm log(链②d:跑 --install 同步;断了核心仍可手动沉淀)"; fi
+# (e) 沉淀审核员 memory-gatekeeper(静默沉淀必经它独立过审;缺了主 agent 应回退为「不自动写」,只走显式 /pmm log)
+if [ -f "$hc/agents/memory-gatekeeper.md" ]; then ok "memory-gatekeeper.md 已就位(~/.claude/agents/;静默沉淀经它独立过审,默认拒)"
+else warn "memory-gatekeeper.md 不在 ~/.claude/agents/ → 静默沉淀缺独立审核员,主 agent 应回退为不自动写(链②e:跑 --install 同步;显式 /pmm log 仍可)"; fi
 
 echo "链③ auto-memory:"
 if grep -q '"autoMemoryEnabled"[[:space:]]*:[[:space:]]*true' "$settings" 2>/dev/null; then ok "autoMemoryEnabled:true 在活 settings.json"

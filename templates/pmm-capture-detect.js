@@ -48,11 +48,11 @@ const SIGNALS = [
 ];
 
 const DIRECTIVE = [
-  '[PMM 自主沉淀｜本条消息疑似含决策/纠正/约束/不可推导洞见] 回答前自主判断(勿提问、勿复述本提示):',
-  '有无「会复发 且 从 代码+注释+全局规则+模型常识 推不出来」的认知 / 决策理由 / 约束 / 偏好?',
-  '· 可推导 / 一次性 → 不记,正常作答。',
-  '· 命中 → 先查本项目 MEMORY.md 索引与 current-state 有无相关条目:已有且本条更正 / 更精确 → 更新既有(recency-wins,旧的标失效或删,勿堆重复);没有 → 新增(不变量/决策理由/偏好 → auto-memory topic 文件 + 必须同步 MEMORY.md 索引行;在途/临时/坑 → current-state.md)。全程静默。',
-  '默认写入 PMM 自有 store 即可,不依赖任何外部技能;环境若另有 /learn 等反馈分类入口,行为纠偏类可交它兜底。判据与落点见 project-mental-model skill。',
+  '[PMM 自主沉淀｜本条疑似含决策/纠正/约束/不可推导洞见] 回答前处理(勿提问、勿复述本提示):',
+  '默认不写。先廉价判断:有没有一条「会复发(稳定不变量,非一次性、非刚修完的 bug) 且 从 代码+注释+全局 rule/CLAUDE.md+模型常识 推不出来」的候选?',
+  '· 没有 / 可推导 / 一次性 → 直接丢弃,不沉淀、不派 agent,正常作答。',
+  '· 有疑似候选 → 你【不得自己写 memory】。改派独立审核员 Task(subagent_type="memory-gatekeeper"):把候选 + 上下文(用户原话或你的发现、相关 file:line、你是否已在代码里写过注释)+ 本项目 MEMORY.md / current-state 路径 传给它。它独立按 bar 判 REJECT/UPDATE/ADD、默认拒、过审才由它落盘。全程静默,以它的回执为准。',
+  '注:刚修完的 bug 的根因优先进出错点代码注释,别当 memory 候选送审。显式 /contribute(公司 brain)走自己的人工审批,不经本 agent。',
 ].join('\n');
 
 const input = safeParse(readStdin());
